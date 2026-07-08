@@ -176,10 +176,120 @@ def render_neon(size, game_name):
     return img
 
 
+def render_vaporwave(size, game_name):
+    """Render a pastel pink/purple vaporwave/synthwave sunset style asset."""
+    w, h = size
+
+    img = Image.new("RGB", (w, h), (20, 10, 40))
+    draw = ImageDraw.Draw(img)
+
+    # Sunset gradient: purple top -> pink -> orange near horizon
+    top_color = (40, 20, 80)
+    mid_color = (220, 60, 140)
+    bottom_color = (255, 170, 90)
+    horizon_y = int(h * 0.6)
+
+    for y in range(horizon_y):
+        t = y / horizon_y
+        r = int(top_color[0] + (mid_color[0] - top_color[0]) * t)
+        g = int(top_color[1] + (mid_color[1] - top_color[1]) * t)
+        b = int(top_color[2] + (mid_color[2] - top_color[2]) * t)
+        draw.line([(0, y), (w, y)], fill=(r, g, b))
+
+    for y in range(horizon_y, h):
+        t = (y - horizon_y) / max(1, (h - horizon_y))
+        r = int(mid_color[0] + (bottom_color[0] - mid_color[0]) * t)
+        g = int(mid_color[1] + (bottom_color[1] - mid_color[1]) * t)
+        b = int(mid_color[2] + (bottom_color[2] - mid_color[2]) * t)
+        draw.line([(0, y), (w, y)], fill=(r, g, b))
+
+    # Sun circle sitting on the horizon
+    sun_radius = int(w * 0.14)
+    sun_center = (w // 2, horizon_y)
+    draw.ellipse(
+        [
+            (sun_center[0] - sun_radius, sun_center[1] - sun_radius),
+            (sun_center[0] + sun_radius, sun_center[1] + sun_radius),
+        ],
+        fill=(255, 210, 120),
+    )
+    # A few horizontal "stripes" cut into the sun for retro sun effect
+    for i in range(4):
+        stripe_y = sun_center[1] - sun_radius + int(sun_radius * 0.5) + i * max(4, sun_radius // 5)
+        draw.rectangle([(sun_center[0] - sun_radius, stripe_y), (sun_center[0] + sun_radius, stripe_y + max(2, sun_radius // 12))], fill=mid_color)
+
+    # Perspective grid below the horizon
+    grid_color = (255, 255, 255)
+    vanishing_x = w // 2
+    for i in range(-6, 7):
+        x_bottom = vanishing_x + i * (w // 8)
+        draw.line([(vanishing_x, horizon_y), (x_bottom, h)], fill=(*grid_color, 255) if False else grid_color, width=1)
+    for j in range(1, 6):
+        y = horizon_y + int((h - horizon_y) * (j / 6) ** 1.5)
+        draw.line([(0, y), (w, y)], fill=grid_color, width=1)
+
+    # Title text, centered above horizon
+    font_size = max(24, w // 11)
+    font = get_font(font_size)
+    text = game_name.upper()
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    tx, ty = (w - tw) / 2, horizon_y * 0.35 - th / 2
+
+    for glow_color, offset in [((0, 230, 255), 8)]:
+        glow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        gdraw = ImageDraw.Draw(glow)
+        gdraw.text((tx, ty), text, font=font, fill=(*glow_color, 90))
+        glow = glow.filter(ImageFilter.GaussianBlur(offset))
+        img = Image.alpha_composite(img.convert("RGBA"), glow).convert("RGB")
+
+    draw = ImageDraw.Draw(img)
+    draw.text((tx, ty), text, font=font, fill=(255, 255, 255))
+
+    return img
+
+
+def render_pixel(size, game_name):
+    """Render a chunky pixel-art style asset by drawing at low-res and upscaling."""
+    w, h = size
+    scale = max(4, w // 100)
+    small_w, small_h = max(1, w // scale), max(1, h // scale)
+
+    small = Image.new("RGB", (small_w, small_h), (18, 18, 28))
+    draw = ImageDraw.Draw(small)
+
+    # Simple checkerboard-ish pixel background pattern
+    block = max(2, small_w // 20)
+    palette = [(18, 18, 28), (28, 28, 46), (40, 40, 64)]
+    for by in range(0, small_h, block):
+        for bx in range(0, small_w, block):
+            color = palette[(bx // block + by // block) % len(palette)]
+            draw.rectangle([bx, by, bx + block, by + block], fill=color)
+
+    small = small.resize((w, h), Image.NEAREST)
+
+    draw = ImageDraw.Draw(small)
+    font_size = max(20, w // 14)
+    font = get_font(font_size)
+    text = game_name.upper()
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    tx, ty = (w - tw) / 2, (h - th) / 2
+
+    # Hard drop shadow for a pixel/8-bit look (no blur)
+    shadow_offset = max(2, w // 250)
+    draw.text((tx + shadow_offset, ty + shadow_offset), text, font=font, fill=(0, 0, 0))
+    draw.text((tx, ty), text, font=font, fill=(120, 255, 120))
+
+    return small
+
+
 STYLES = {
     "retro": render_retro,
     "minimal": render_minimal,
     "neon": render_neon,
+    "vaporwave": render_vaporwave,
+    "pixel": render_pixel,
 }
 
 
