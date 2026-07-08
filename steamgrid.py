@@ -104,8 +104,82 @@ def render_retro(size, game_name):
     return img.convert("RGB")
 
 
+def render_minimal(size, game_name):
+    """Render a clean, flat, minimal style asset for the given size."""
+    w, h = size
+
+    # Flat background color
+    bg_color = (24, 26, 32)
+    accent_color = (90, 200, 250)
+    img = Image.new("RGB", (w, h), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    # Thin accent line near the bottom
+    line_y = int(h * 0.82)
+    draw.rectangle([(0, line_y), (w, line_y + max(2, h // 200))], fill=accent_color)
+
+    # Centered title text
+    font_size = max(24, w // 13)
+    font = get_font(font_size)
+    text = game_name.upper()
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    tx, ty = (w - tw) / 2, (h - th) / 2 - h * 0.03
+
+    draw.text((tx, ty), text, font=font, fill=(245, 245, 245))
+
+    return img
+
+
+def render_neon(size, game_name):
+    """Render a vibrant, neon cyberpunk style asset for the given size."""
+    w, h = size
+
+    # Dark blue-black background
+    img = Image.new("RGB", (w, h), (5, 5, 15))
+    draw = ImageDraw.Draw(img)
+
+    # Diagonal-ish gradient using horizontal bands for a synthwave feel
+    for y in range(h):
+        t = y / h
+        r = int(5 + t * 25)
+        g = int(5 + t * 5)
+        b = int(30 + t * 60)
+        draw.line([(0, y), (w, y)], fill=(r, g, b))
+
+    # Horizon glow lines (like a synthwave grid horizon)
+    horizon_y = int(h * 0.65)
+    grid_color = (255, 0, 180)
+    for i in range(6):
+        y = horizon_y + i * max(6, h // 60)
+        alpha_line_color = tuple(min(255, c + i * 5) for c in grid_color)
+        draw.line([(0, y), (w, y)], fill=alpha_line_color, width=1)
+
+    # Neon title text with cyan + magenta glow
+    font_size = max(24, w // 11)
+    font = get_font(font_size)
+    text = game_name.upper()
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    tx, ty = (w - tw) / 2, (h - th) / 2 - h * 0.08
+
+    for glow_color, offset in [((0, 255, 255), 10), ((255, 0, 200), 6)]:
+        glow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        gdraw = ImageDraw.Draw(glow)
+        gdraw.text((tx, ty), text, font=font, fill=(*glow_color, 60))
+        glow = glow.filter(ImageFilter.GaussianBlur(offset))
+        img = Image.alpha_composite(img.convert("RGBA"), glow).convert("RGB")
+
+    draw = ImageDraw.Draw(img)
+    draw.text((tx, ty), text, font=font, fill=(255, 255, 255))
+
+    return img
+
+
 STYLES = {
     "retro": render_retro,
+    "minimal": render_minimal,
+    "neon": render_neon,
 }
 
 
